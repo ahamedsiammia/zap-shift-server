@@ -29,9 +29,13 @@ async function run() {
 
     // parcel api 
     app.get("/parcels", async(req,res)=>{
-
+      const {email}=req.query;
+      const query ={senderEmail : email}
+      const result = await parcelsCollection.find(query).toArray()
+      res.send(result)
     })
-
+  
+    // post api
     app.post("/parcels",async(req,res)=>{
         const parcel = req.body;
         const result = await parcelsCollection.insertOne(parcel);
