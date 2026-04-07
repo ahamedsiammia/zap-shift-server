@@ -33,7 +33,7 @@ async function run() {
       const query ={senderEmail : email}
       const result = await parcelsCollection.find(query).toArray()
       res.send(result)
-    })
+    }) 
   
     // post api
     app.post("/parcels",async(req,res)=>{
@@ -42,7 +42,7 @@ async function run() {
         res.send(result)
     })
 
-
+    // user api
 
 
     // Send a ping to confirm a successful connection
