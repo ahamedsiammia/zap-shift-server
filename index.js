@@ -62,17 +62,33 @@ async function run() {
     // payment get way work start
 
     app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      const amount = parseInt(paymentInfo.cost) * 100;
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
-            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
-            price: "{{PRICE_ID}}",
+            price_data:{
+                currency:"USD",
+                unit_amount: amount,
+                product_data: {
+                  name :paymentInfo.parcelName,
+
+                }
+            },
             quantity: 1,
           },
         ],
+        customer_email: paymentInfo.senderEmail,
         mode: "payment",
-        success_url: `${process.env.SETE_DOMAIN}?success=true`,
+        metadata:{
+          parcelId : paymentInfo.parcelId
+        },
+        success_url: `${process.env.SETE_DOMAIN}/dashboard/payment-success`,
+        cancel_url: `${process.env.SETE_DOMAIN}/dashboard/payment-cancelled`,
       });
+
+      console.log(session);
+      res.send({url: session.url})
     });
 
     // Send a ping to confirm a successful connection
