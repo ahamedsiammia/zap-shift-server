@@ -1,15 +1,16 @@
-const express = require('express')
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const express = require("express");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
-require('dotenv').config()
-const app = express()
-const port = process.env.PORT ||  3000;
+require("dotenv").config();
+const app = express();
+const port = process.env.PORT || 3000;
 
-// middleware 
+// middleware
 app.use(express.json());
 app.use(cors());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.im5itev.mongodb.net/?appName=Cluster0`;
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -17,7 +18,7 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 async function run() {
   try {
@@ -25,37 +26,60 @@ async function run() {
     await client.connect();
 
     const db = client.db("zap-shift");
-    const parcelsCollection = db.collection("parcels")
+    const parcelsCollection = db.collection("parcels");
 
-    // parcel api 
-    app.get("/parcels", async(req,res)=>{
-      const {email}=req.query;
-      const query ={senderEmail : email}
-      const options = {sort:{createdAt : -1}}
-      const result = await parcelsCollection.find(query,options).toArray()
-      res.send(result)
-    }) 
-  
+    // parcel api
+    app.get("/parcels", async (req, res) => {
+      const { email } = req.query;
+      const query = { senderEmail: email };
+      const options = { sort: { createdAt: -1 } };
+      const result = await parcelsCollection.find(query, options).toArray();
+      res.send(result);
+    });
+
     // post api
-    app.post("/parcels",async(req,res)=>{
-        const parcel = req.body;
-        parcel.createdAt = new Date();
-        const result = await parcelsCollection.insertOne(parcel);
-        res.send(result)
-    })
+    app.post("/parcels", async (req, res) => {
+      const parcel = req.body;
+      parcel.createdAt = new Date();
+      const result = await parcelsCollection.insertOne(parcel);
+      res.send(result);
+    });
 
     // Parcels delete api
-    app.delete("/parcels",async(req,res)=>{
-      const {id}= req.query;
-      const query = {_id: new ObjectId(id)};
+    app.delete("/parcels", async (req, res) => {
+      const { id } = req.query;
+      const query = { _id: new ObjectId(id) };
       const result = await parcelsCollection.deleteOne(query);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
+    app.get("/parcels/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await parcelsCollection.findOne(query);
+      res.send(result);
+    });
+    // payment get way work start
+
+    app.post("/create-checkout-session", async (req, res) => {
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+            price: "{{PRICE_ID}}",
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${process.env.SETE_DOMAIN}?success=true`,
+      });
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!",
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -63,10 +87,10 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-  res.send('zap shift running on localhost!')
-})
+app.get("/", (req, res) => {
+  res.send("zap shift running on localhost!");
+});
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  console.log(`Example app listening on port ${port}`);
+});
