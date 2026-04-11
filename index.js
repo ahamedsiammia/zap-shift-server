@@ -27,6 +27,15 @@ async function run() {
 
     const db = client.db("zap-shift");
     const parcelsCollection = db.collection("parcels");
+    const paymentCollection = db.collection("payments");
+
+    const generateTrackingId = () => {
+      const prefix = "ZS";
+      const timestamp = Date.now().toString().slice(-4);
+      const random = Math.floor(100 + Math.random() * 900);
+
+      return `${prefix}-${timestamp}-${random}`;
+    };
 
     // parcel api
     app.get("/parcels", async (req, res) => {
@@ -80,6 +89,7 @@ async function run() {
         mode: "payment",
         metadata: {
           parcelId: paymentInfo.parcelId,
+          parcelName: paymentInfo.parcelName,
         },
         customer_email: paymentInfo.senderEmail,
         success_url: `${process.env.SETE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -122,16 +132,39 @@ async function run() {
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      if(session.payment_status === "paid"){
+      const trackingId = generateTrackingId()
+      if (session.payment_status === "paid") {
         const id = session.metadata.parcelId;
-        const query = { _id : new ObjectId(id)};
-        const update ={
-          $set:{
-            paymentStatus:"paid"
-          }
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            paymentStatus: "paid",
+          },
+        };
+        const result = await parcelsCollection.updateOne(query, update);
+        // res.send({ result, session });
+        const payment = {
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          customerEmail: session.customer_email,
+          parcelId: session.metadata.parcelId,
+          parcelName: session.metadata.parcelName,
+          transactionId: session.payment_intent,
+          paymentStatus: session.payment_status,
+          paidAt: new Date(),
+          trackingId: trackingId,
+        };
+        if (session.payment_status === "paid") {
+          const resultPayment = await paymentCollection.insertOne(payment);
+          res.send({
+            success: true,
+            modifyParcel: result,
+            trackingId: trackingId,
+            amount: session.amount_total / 100,
+            transactionId:session.payment_intent,
+            paymentInfo: resultPayment,
+          });
         }
-        const result = await parcelsCollection.updateOne(query,update)
-        res.send(result)
       }
       console.log("session", session);
       res.send({ success: true });
