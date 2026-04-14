@@ -151,7 +151,7 @@ async function run() {
           parcelName: session.metadata.parcelName,
           transactionId: session.payment_intent,
           paymentStatus: session.payment_status,
-          paidAt: new Date(),
+          paidAt: new Date(), 
           trackingId: trackingId,
         };
         if (session.payment_status === "paid") {
