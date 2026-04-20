@@ -217,7 +217,7 @@ async function run() {
       const query = {}
       if(email){
          query.customerEmail === email;
-
+ 
         //  check email address
         if(email !== req.decoded_email)
           return res.status(403).send({message:"forbidden"})
@@ -225,7 +225,7 @@ async function run() {
         };
       // console.log(req.headers);
       const result = await paymentCollection.find(query).toArray();
-      res.send(result);
+      res.send(result); 
     })
 
     // Send a ping to confirm a successful connection
