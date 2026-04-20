@@ -223,7 +223,7 @@ async function run() {
           return res.status(403).send({message:"forbidden"})
 
         };
-      // console.log(req.headers);
+      // console.log(req.headers); 
       const result = await paymentCollection.find(query).toArray();
       res.send(result); 
     })
