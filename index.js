@@ -9,6 +9,37 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
+// jwt 
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
+
+
+
+const verifyFBToken = async (req,res,next)=>{
+  const token = req.headers?.authorization;
+  if(!token){
+    return res.status(401).send({message:"unauthorized token"})
+  } 
+
+  try{
+    const idToken = token.split(' ')[1];
+    const decode = await admin.auth().verifyIdToken(idToken)
+    console.log("console the decoded token ",decode);
+    req.decoded_email = decode.email; 
+    next();
+  }
+  catch(error){
+    return res.status(401).send({message:"unauthorize access"})
+  }
+}
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.im5itev.mongodb.net/?appName=Cluster0`;
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
@@ -132,6 +163,16 @@ async function run() {
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      const transactionId = session.payment_intent;
+
+      const query = { transactionId : transactionId}
+      const paymentExist = await paymentCollection.findOne(query);
+
+      if(paymentExist){
+        return res.send({message:"already Exist",transactionId})
+      }
+
       const trackingId = generateTrackingId()
       if (session.payment_status === "paid") {
         const id = session.metadata.parcelId;
@@ -169,6 +210,23 @@ async function run() {
       console.log("session", session);
       res.send({ success: true });
     });
+
+    // payment history 
+    app.get("/payments", verifyFBToken, async (req,res)=>{
+      const email = req.query.email;
+      const query = {}
+      if(email){
+         query.customerEmail === email;
+
+        //  check email address
+        if(email !== req.decoded_email)
+          return res.status(403).send({message:"forbidden"})
+
+        };
+      // console.log(req.headers);
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
