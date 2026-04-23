@@ -60,6 +60,7 @@ async function run() {
     const userCollection = db.collection("users");
     const parcelsCollection = db.collection("parcels");
     const paymentCollection = db.collection("payments");
+    const riderCollection = db.collection("riders");
 
     const generateTrackingId = () => {
       const prefix = "ZS";
@@ -74,6 +75,11 @@ async function run() {
       const user = req.body;
       user.role = "user";
       user.createdAt = new Date();
+      const email = user.email;
+      const isExist = await userCollection.findOne({email});
+      if(isExist){
+        return res.send({message:"user already exit"})
+      }
       const result = await userCollection.insertOne(user);
       res.send(result)
     })
@@ -236,6 +242,25 @@ async function run() {
       // console.log(req.headers); 
       const result = await paymentCollection.find(query).sort({paidAt : -1}).toArray();
       res.send(result); 
+    })
+
+    // rider related api 
+    app.post("/riders",async(req,res)=>{
+      const rider = req.body;
+      rider.status = "pending";
+      rider.createdAt = new Date();
+
+      const result = await riderCollection.insertOne(rider);
+      res.send(result);
+    })
+
+    app.get("/riders",async(req,res)=>{
+      const query = {};
+      if(req.query.status){
+        query.status = req.query.status;
+      }
+      const result = await riderCollection.find(query).toArray();
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
