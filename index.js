@@ -263,6 +263,31 @@ async function run() {
       res.send(result)
     })
 
+    // rider approval api
+    app.patch("/riders/:id",verifyFBToken,async(req,res)=>{
+      const status = req.body.status;
+      const id = req.params.id;
+      const query = {_id : new ObjectId(id)};
+      const update ={
+        $set:{
+          status : status
+        }
+      };
+      const result = await riderCollection.updateOne(query,update);
+      if(status === "approved"){
+        const email = req.body.email;
+        const userQuery = {email : email}
+        const userUpdate = {
+          $set:{
+            role : "rider"
+          }
+        };
+        const userResult = await userCollection.updateOne(userQuery,userUpdate);
+      }
+      res.send(result)
+
+    })
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
