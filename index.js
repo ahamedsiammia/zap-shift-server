@@ -71,6 +71,11 @@ async function run() {
     };
 
     // user related apis 
+    app.get("/users",verifyFBToken,async(req,res)=>{
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    })
+
     app.post("/users",async (req,res)=>{
       const user = req.body;
       user.role = "user";
@@ -81,6 +86,19 @@ async function run() {
         return res.send({message:"user already exit"})
       }
       const result = await userCollection.insertOne(user);
+      res.send(result)
+    })
+
+    app.patch("/users/:id",async(req,res)=>{
+      const role = req.body.role;
+      const id = req.params.id;
+      const query = {_id : new ObjectId(id)};
+      const update = {
+        $set:{
+          role : role
+        }
+      };
+      const result = await userCollection.updateOne(query,update);
       res.send(result)
     })
 
